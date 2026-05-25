@@ -665,7 +665,7 @@ function render(d) {
   const treeRoot = d.file_tree;
   const treeContainer = $('file-tree');
   if (treeRoot && treeContainer) {
-    (treeRoot.children || []).forEach(child => renderTree(child, 0, treeContainer, true));
+    (treeRoot.children || []).forEach(child => renderTree(child, 0, treeContainer, false));
   }
 }
 
