@@ -402,7 +402,7 @@ function render(d) {
   const p = d.productivity || {};
   const cards = [
     { label: 'Words',         value: fmt(c.words),            sub: `median ${fmt(p.median_words_per_session||0)} words/session` },
-    { label: 'Pages',         value: fmt(c.manuscript_pages), sub: '~250 words each'            },
+    { label: 'Avg words/note',value: fmt(c.avg_words_per_content_note||0), sub: 'in Content folder'  },
     { label: 'Notes',         value: fmt(c.files),            sub: 'markdown files'             },
     { label: 'Folders',       value: fmt(c.folders),          sub: 'in vault'                   },
     { label: 'Lines',         value: fmt(c.lines),            sub: 'of text'                    },

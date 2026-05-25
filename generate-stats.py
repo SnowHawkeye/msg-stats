@@ -20,7 +20,7 @@ from collections import Counter
 VAULT      = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path('.').resolve()
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT     = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else SCRIPT_DIR / 'vault-stats.json'
-WORDS_PER_PAGE      = 250  # manuscript page estimate
+WORDS_PER_PAGE      = 250  # kept for reference; no longer used in output
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def git(*args, **kw):
@@ -108,15 +108,19 @@ def build_tree(node_path: Path, rel_parts: tuple) -> dict:
 
 file_tree = build_tree(VAULT, ())
 
+content_words = [wc for path, wc in file_words.items()
+                 if path.startswith('Content' + os.sep) or path.startswith('Content/')]
+avg_words_per_content_note = int(sum(content_words) / len(content_words)) if content_words else 0
+
 current = {
-    'words':            total_words,
-    'lines':            total_lines,
-    'chars':            total_chars,
-    'files':            len(md_files),
-    'folders':          len(folders),
-    'manuscript_pages': total_words // WORDS_PER_PAGE,
+    'words':                     total_words,
+    'lines':                     total_lines,
+    'chars':                     total_chars,
+    'files':                     len(md_files),
+    'folders':                   len(folders),
+    'avg_words_per_content_note': avg_words_per_content_note,
 }
-print(f"   {total_words:,} words  ·  {len(md_files)} notes  ·  {len(folders)} folders")
+print(f"   {total_words:,} words  ·  {len(md_files)} notes  ·  {len(folders)} folders  ·  avg {avg_words_per_content_note:,} words/note (Content)")
 
 # ── 2. File event history ─────────────────────────────────────────────────────
 print("\n② File event history …")
