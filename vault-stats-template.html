@@ -320,8 +320,8 @@
       <button class="filter-btn" data-range="all">All</button>
       <button class="filter-btn" data-range="6M">6M</button>
       <button class="filter-btn" data-range="3M">3M</button>
-      <button class="filter-btn active" data-range="1M">1M</button>
-      <button class="filter-btn" data-range="1W">1W</button>
+      <button class="filter-btn" data-range="1M">1M</button>
+      <button class="filter-btn active" data-range="1W">1W</button>
     </div>
     <div class="chart-wrap">
       <canvas id="wordChart"></canvas>
@@ -488,8 +488,8 @@ function render(d) {
   }
 
   if (wordHistory.length > 1) {
-    buildWordChart('1M');
-    buildWeekdayChart('1M');
+    buildWordChart('1W');
+    buildWeekdayChart('1W');
     document.querySelectorAll('.chart-filter-bar .filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.chart-filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
