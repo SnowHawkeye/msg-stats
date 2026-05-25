@@ -57,14 +57,56 @@ folders = [
 ]
 
 total_words = total_lines = total_chars = 0
+file_words = {}   # relative path str → word count
 for f in md_files:
     try:
         text = f.read_text(encoding='utf-8', errors='ignore')
-        total_words += words_in(text)
+        wc = words_in(text)
+        total_words += wc
         total_lines += text.count('\n') + 1
         total_chars += len(text)
+        rel = str(f.relative_to(VAULT))
+        file_words[rel] = wc
     except Exception:
         pass
+
+def build_tree(node_path: Path, rel_parts: tuple) -> dict:
+    """Recursively build a tree node for a directory."""
+    children = []
+    total = 0
+    # subdirectories (non-dot)
+    try:
+        subdirs = sorted(
+            d for d in node_path.iterdir()
+            if d.is_dir() and not d.name.startswith('.')
+        )
+    except PermissionError:
+        subdirs = []
+    for subdir in subdirs:
+        child = build_tree(subdir, rel_parts + (subdir.name,))
+        total += child['words']
+        children.append(child)
+    # markdown files in this directory
+    try:
+        files = sorted(
+            f for f in node_path.iterdir()
+            if f.is_file() and f.suffix == '.md'
+        )
+    except PermissionError:
+        files = []
+    for f in files:
+        rel = str(f.relative_to(VAULT))
+        wc = file_words.get(rel, 0)
+        total += wc
+        children.append({'name': f.stem, 'type': 'file', 'words': wc})
+    return {
+        'name':     node_path.name or str(node_path),
+        'type':     'folder',
+        'words':    total,
+        'children': children,
+    }
+
+file_tree = build_tree(VAULT, ())
 
 current = {
     'words':            total_words,
@@ -248,6 +290,7 @@ data = {
     'file_events':  file_events,
     'word_history': word_history,
     'productivity': productivity,
+    'file_tree':    file_tree,
 }
 
 OUTPUT.write_text(json.dumps(data, indent=2, ensure_ascii=False))
