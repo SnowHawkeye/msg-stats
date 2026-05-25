@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing Stats</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #0e0e0f;
+    --surface:   #18181b;
+    --border:    #27272a;
+    --muted:     #52525b;
+    --text:      #e4e4e7;
+    --dim:       #a1a1aa;
+    --accent:    #c8a96e;
+    --accent2:   #7c6aab;
+    --add:       #4ade80;
+    --del:       #f87171;
+    --ren:       #60a5fa;
+    --gap:       1.5rem;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 2.5rem var(--gap);
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .vault-title {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .generated {
+    color: var(--muted);
+    font-size: 11px;
+    text-align: right;
+  }
+
+  /* ── grid layout ── */
+  .grid {
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+    margin-bottom: var(--gap);
+  }
+  .grid-wide {
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: 1fr;
+    margin-bottom: var(--gap);
+  }
+  @media (min-width: 900px) {
+    .grid-wide { grid-template-columns: 2fr 1fr; }
+    .grid-wide.flip { grid-template-columns: 1fr 2fr; }
+  }
+
+  /* ── cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+  }
+  .card-label {
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .5rem;
+  }
+  .card-value {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2.6rem);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .card-sub {
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: .35rem;
+  }
+
+  /* ── section headers ── */
+  .section-title {
+    font-family: 'Inter', sans-serif;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: .5rem;
+  }
+
+  /* ── chart ── */
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+    width: 100%;
+  }
+  canvas { display: block; }
+
+  /* ── streak widget ── */
+  .streak-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+  }
+  .streak-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+    text-align: center;
+  }
+  .streak-num {
+    font-family: 'Inter', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .streak-label {
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: .3rem;
+  }
+
+
+  /* ── file events ── */
+  .events-list {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .events-list::-webkit-scrollbar { width: 4px; }
+  .events-list::-webkit-scrollbar-track { background: transparent; }
+  .events-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .event-row {
+    display: grid;
+    grid-template-columns: 78px 34px 1fr;
+    gap: .5rem;
+    align-items: baseline;
+    padding: .35rem .5rem;
+    border-radius: 6px;
+    transition: background .15s;
+  }
+  .event-row:hover { background: var(--border); }
+  .event-date { font-size: 11px; color: var(--muted); }
+  .event-badge {
+    font-size: 9px;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 2px 4px;
+    text-align: center;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .badge-A { background: #15291d; color: var(--add); }
+  .badge-D { background: #2c1515; color: var(--del); }
+  .badge-R { background: #151d2e; color: var(--ren); }
+  .badge-M { background: #292210; color: #f59e0b; }
+  .event-path {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .event-old { color: var(--muted); font-size: 11px; display: block; }
+  .event-msg { color: var(--muted); font-size: 10px; font-style: italic; margin-left: .3rem; }
+
+  /* ── filter bar ── */
+  .filter-bar {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    border-radius: 5px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── loading / error ── */
+  /* ── chart date filter ── */
+  .chart-filter-bar {
+    display: flex;
+    gap: .4rem;
+    margin-bottom: .75rem;
+  }
+
+  #loading {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--dim);
+    z-index: 100;
+  }
+  #loading.hidden { display: none; }
+  .error-box {
+    background: #2c1515;
+    border: 1px solid #5c2222;
+    border-radius: 8px;
+    padding: 1.5rem;
+    color: var(--del);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  code { background: var(--border); padding: 2px 6px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="loading">opening the vault…</div>
+
+<header>
+  <div>
+    <div class="vault-title">Writing Stats</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:.3rem;" id="vault-path"></div>
+  </div>
+  <div class="generated" id="generated-at"></div>
+</header>
+
+<!-- stat cards -->
+<div class="grid" id="stat-cards"></div>
+
+<!-- word history chart + weekday/streak -->
+<div class="grid-wide">
+  <div class="card">
+    <div class="section-title">Word count over time</div>
+    <div class="chart-filter-bar">
+      <button class="filter-btn" data-range="all">All</button>
+      <button class="filter-btn" data-range="6M">6M</button>
+      <button class="filter-btn" data-range="3M">3M</button>
+      <button class="filter-btn active" data-range="1M">1M</button>
+      <button class="filter-btn" data-range="1W">1W</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="wordChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Writing rhythm</div>
+    <div class="streak-grid" id="streak-grid"></div>
+    <div id="weekday-label" style="margin-bottom:.6rem;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);">Words by weekday · 1M</div>
+    <div style="position:relative;height:90px"><canvas id="weekdayChart"></canvas></div>
+  </div>
+</div>
+
+<!-- file event log -->
+<div class="card" style="margin-bottom:var(--gap);">
+  <div class="section-title">File history</div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="A">Added</button>
+    <button class="filter-btn" data-filter="M">Modified</button>
+    <button class="filter-btn" data-filter="R">Moved / renamed</button>
+    <button class="filter-btn" data-filter="D">Deleted</button>
+  </div>
+  <div class="events-list" id="events-list"></div>
+</div>
+
+<script>const __STATS__ = null; /* STATS_INJECT */</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── helpers ─────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString();
+
+function shortPath(p) {
+  return p.replace(/^.*\/([^/]+\/[^/]+)$/, '$1');
+}
+
+// ── load data ────────────────────────────────────────────────────────────────
+async function load() {
+  try {
+    let d;
+    if (typeof __STATS__ !== 'undefined' && __STATS__) {
+      d = __STATS__;
+    } else {
+      const r = await fetch('vault-stats.json');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      d = await r.json();
+    }
+    render(d);
+    $('loading').classList.add('hidden');
+  } catch (e) {
+    $('loading').classList.add('hidden');
+    document.body.insertAdjacentHTML('afterbegin', `
+      <div class="error-box">
+        <strong>Could not load stats</strong><br><br>
+        Run the generator to update this file:<br>
+        <code>python3 generate-stats.py /path/to/your/vault</code><br><br>
+        Error: ${e.message}
+      </div>`);
+  }
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+function render(d) {
+  $('loading').classList.add('hidden');
+  $('generated-at').textContent = 'generated ' + new Date(d.generated_at).toLocaleString();
+  $('vault-path').textContent = d.vault_path || '';
+
+  // stat cards
+  const c = d.current;
+  const p = d.productivity || {};
+  const cards = [
+    { label: 'Words',         value: fmt(c.words),            sub: `median ${fmt(p.median_words_per_session||0)} words/session` },
+    { label: 'Pages',         value: fmt(c.manuscript_pages), sub: '~250 words each'            },
+    { label: 'Notes',         value: fmt(c.files),            sub: 'markdown files'             },
+    { label: 'Folders',       value: fmt(c.folders),          sub: 'in vault'                   },
+    { label: 'Lines',         value: fmt(c.lines),            sub: 'of text'                    },
+    { label: 'Characters',    value: fmt(c.chars),            sub: 'total'                      },
+  ];
+  $('stat-cards').innerHTML = cards.map(x => `
+    <div class="card">
+      <div class="card-label">${x.label}</div>
+      <div class="card-value">${x.value}</div>
+      <div class="card-sub">${x.sub}</div>
+    </div>`).join('');
+
+  // word history chart
+  let wordChartInstance = null;
+  const weekdayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  let weekdayChartInstance = null;
+  const wordHistory = d.word_history || [];
+
+  function buildWordChart(rangeKey) {
+    const now = Date.now();
+    const cutoffs = { '1W': 7, '1M': 30, '3M': 90, '6M': 180 };
+    let history = wordHistory;
+    if (cutoffs[rangeKey]) {
+      const ms = cutoffs[rangeKey] * 86400000;
+      history = wordHistory.filter(p => new Date(p.date).getTime() >= now - ms);
+    }
+    if (wordChartInstance) wordChartInstance.destroy();
+    if (history.length < 2) {
+      $('wordChart').closest('.chart-wrap').innerHTML =
+        '<div style="color:var(--muted);padding:2rem;text-align:center">Not enough data for this range.</div>';
+      return;
+    }
+    const ctx = $('wordChart').getContext('2d');
+    const labels = history.map(p => p.date);
+    const values = history.map(p => p.words);
+    wordChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#c8a96e',
+          backgroundColor: 'rgba(200,169,110,.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#c8a96e',
+          tension: 0.3,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 600, easing: 'easeInOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#18181b',
+            borderColor: '#27272a',
+            borderWidth: 1,
+            titleColor: '#a1a1aa',
+            bodyColor: '#c8a96e',
+            bodyFont: { family: 'JetBrains Mono', size: 13 },
+            callbacks: {
+              label: ctx => ` ${fmt(ctx.parsed.y)} words`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#52525b', font: { family: 'JetBrains Mono', size: 10 },
+                     maxTicksLimit: 8 },
+            grid: { color: '#27272a' }
+          },
+          y: {
+            ticks: { color: '#52525b', font: { family: 'JetBrains Mono', size: 10 },
+                     callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v },
+            grid: { color: '#27272a' }
+          }
+        }
+      }
+    });
+  }
+
+  if (wordHistory.length > 1) {
+    buildWordChart('1M');
+    buildWeekdayChart('1M');
+    document.querySelectorAll('.chart-filter-bar .filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chart-filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        buildWordChart(btn.dataset.range);
+        buildWeekdayChart(btn.dataset.range);
+      });
+    });
+  } else {
+    $('wordChart').closest('.chart-wrap').innerHTML =
+      '<div style="color:var(--muted);padding:2rem;text-align:center">Not enough commits yet — keep writing!</div>';
+  }
+
+  // streak
+  const streakItems = [
+    { num: p.current_streak || 0,          label: 'day streak'    },
+    { num: p.best_streak || 0,             label: 'best streak'   },
+    { num: p.total_writing_days || 0,      label: 'days writing'  },
+    { num: p.total_commits || 0,           label: 'total commits' },
+  ];
+  $('streak-grid').innerHTML = streakItems.map(x => `
+    <div class="streak-box">
+      <div class="streak-num">${x.num}</div>
+      <div class="streak-label">${x.label}</div>
+    </div>`).join('');
+
+  // weekday chart (Chart.js) — synced to word-chart filter
+  function buildWeekdayChart(rangeKey) {
+    const now = Date.now();
+    const cutoffsWd = { '1W': 7, '1M': 30, '3M': 90, '6M': 180 };
+    let history = wordHistory;
+    if (cutoffsWd[rangeKey]) {
+      const ms = cutoffsWd[rangeKey] * 86400000;
+      history = wordHistory.filter(pt => new Date(pt.date).getTime() >= now - ms);
+    }
+
+    // compute per-weekday word deltas from the filtered slice
+    const wdWords = {};
+    weekdayOrder.forEach(d => wdWords[d] = 0);
+    const posDeltas = [];
+    for (let i = 1; i < history.length; i++) {
+      const delta = history[i].words - history[i - 1].words;
+      if (delta > 0) {
+        posDeltas.push(delta);
+        const dayName = new Date(history[i].date).toLocaleDateString('en-US', { weekday: 'long' });
+        if (dayName in wdWords) wdWords[dayName] += delta;
+      }
+    }
+    const wdValues = weekdayOrder.map(d => wdWords[d]);
+
+    const rangeLabel = rangeKey === 'all' ? 'all time' : rangeKey;
+    const avgLabel = posDeltas.length
+      ? ` · avg ${fmt(Math.round(posDeltas.reduce((a, b) => a + b, 0) / posDeltas.length))} words/session`
+      : '';
+    $('weekday-label').textContent = `Words by weekday · ${rangeLabel}${avgLabel}`;
+
+    if (weekdayChartInstance) weekdayChartInstance.destroy();
+    weekdayChartInstance = new Chart($('weekdayChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: weekdayOrder.map(d => d.slice(0, 2)),
+        datasets: [{
+          data: wdValues,
+          backgroundColor: 'rgba(124,106,171,.7)',
+          hoverBackgroundColor: '#7c6aab',
+          borderRadius: 3,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#18181b',
+            borderColor: '#27272a',
+            borderWidth: 1,
+            titleColor: '#a1a1aa',
+            bodyColor: '#7c6aab',
+            bodyFont: { family: 'JetBrains Mono', size: 12 },
+            callbacks: {
+              title: items => weekdayOrder[items[0].dataIndex],
+              label: item => ` ${item.parsed.y.toLocaleString()} words`,
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#52525b', font: { family: 'JetBrains Mono', size: 10 } },
+               grid: { display: false } },
+          y: { ticks: { color: '#52525b', font: { family: 'JetBrains Mono', size: 10 },
+                        precision: 0 },
+               grid: { color: '#27272a' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // file events
+  const allEvents = d.file_events || [];   // already newest-first from git log
+  let activeFilter = 'all';
+
+  function renderEvents(filter) {
+    const shown = filter === 'all' ? allEvents : allEvents.filter(e => e.type === filter);
+    if (shown.length === 0) {
+      $('events-list').innerHTML = '<div style="color:var(--muted);padding:.5rem">No events.</div>';
+      return;
+    }
+    $('events-list').innerHTML = shown.slice(0, 300).map(e => {
+      const badgeClass = `badge-${e.type}`;
+      const badgeText  = e.type === 'A' ? 'ADD' : e.type === 'D' ? 'DEL' : e.type === 'M' ? 'MOD' : 'MOV';
+      const oldLine    = e.old_file
+        ? `<span class="event-old">← ${shortPath(e.old_file)}</span>` : '';
+      const msgLine    = e.message
+        ? `<span class="event-msg">${e.message.substring(0,60)}</span>` : '';
+      return `<div class="event-row">
+        <span class="event-date">${e.date}</span>
+        <span class="event-badge ${badgeClass}">${badgeText}</span>
+        <span class="event-path">${shortPath(e.file)}${oldLine}${msgLine}</span>
+      </div>`;
+    }).join('');
+  }
+
+  renderEvents('all');
+
+  document.querySelectorAll('.filter-bar .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      renderEvents(activeFilter);
+    });
+  });
+}
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Generated files — contain vault data, not for committing
+vault-stats.html
+vault-stats.json
+
+__pycache__/
