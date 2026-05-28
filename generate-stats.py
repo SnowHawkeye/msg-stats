@@ -12,7 +12,7 @@ Run this script (or add it to a git post-commit hook) then open vault-stats.html
 """
 
 import subprocess, json, sys, os, tarfile, io, re, webbrowser
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from collections import Counter
 
@@ -184,7 +184,13 @@ commits = []
 for line in log2.stdout.strip().splitlines():
     if '|' in line:
         d, h = line.split('|', 1)
-        commits.append((d[:10], h.strip()))
+        # Treat commits before 7am as belonging to the previous day (night-owl friendly)
+        try:
+            dt = datetime.strptime(d.strip()[:19], '%Y-%m-%d %H:%M:%S')
+            adjusted = (dt.date() - timedelta(days=1)).isoformat() if dt.hour < 7 else dt.date().isoformat()
+        except Exception:
+            adjusted = d[:10]
+        commits.append((adjusted, h.strip()))
 
 # One commit per calendar day (most recent of that day)
 by_day = {}
@@ -224,17 +230,17 @@ commit_dates = sorted({d for d, _ in commits})   # unique calendar days
 def compute_streak(dates_asc):
     if not dates_asc:
         return 0, 0
-    from datetime import timedelta
     dates = [date.fromisoformat(d) for d in dates_asc]
-    today  = date.today()
+    now   = datetime.now()
+    today = date.today() if now.hour >= 7 else date.today() - timedelta(days=1)
     # Current streak
     cur = 0
     check = today
     for d in reversed(dates):
-        if d == check or d == check - __import__('datetime').timedelta(days=1 if cur > 0 else 0):
+        if d == check or d == check - timedelta(days=1 if cur > 0 else 0):
             if d <= check:
                 cur += 1
-                check = d - __import__('datetime').timedelta(days=1)
+                check = d - timedelta(days=1)
         else:
             break
     # Longest streak
