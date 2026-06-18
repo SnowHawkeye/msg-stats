@@ -32,6 +32,19 @@ def git_bytes(*args):
 def words_in(text: str) -> int:
     return len(text.split())
 
+def canvas_text(raw: str) -> str:
+    """Extract the writable text content (card text) from a .canvas JSON file."""
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return ''
+    return '\n'.join(n['text'] for n in data.get('nodes', []) if n.get('text'))
+
+def text_for(path_suffix: str, raw: str) -> str:
+    return canvas_text(raw) if path_suffix == '.canvas' else raw
+
+CONTENT_EXTS = ('.md', '.canvas')
+
 # ── Sanity check ──────────────────────────────────────────────────────────────
 os.chdir(VAULT)
 if not (VAULT / '.git').exists():
@@ -44,9 +57,10 @@ print(f"📄  Output: {OUTPUT}")
 # ── 1. Current stats ──────────────────────────────────────────────────────────
 print("\n① Current stats …")
 
-md_files = [
-    f for f in VAULT.rglob('*.md')
-    if '.git' not in f.parts and '.trash' not in f.parts
+content_files = [
+    f for f in VAULT.rglob('*')
+    if f.is_file() and f.suffix in CONTENT_EXTS
+    and '.git' not in f.parts and '.trash' not in f.parts
 ]
 folders = [
     d for d in VAULT.rglob('*')
@@ -58,9 +72,10 @@ folders = [
 
 total_words = total_lines = total_chars = 0
 file_words = {}   # relative path str → word count
-for f in md_files:
+for f in content_files:
     try:
-        text = f.read_text(encoding='utf-8', errors='ignore')
+        raw = f.read_text(encoding='utf-8', errors='ignore')
+        text = text_for(f.suffix, raw)
         wc = words_in(text)
         total_words += wc
         total_lines += text.count('\n') + 1
@@ -86,11 +101,11 @@ def build_tree(node_path: Path, rel_parts: tuple) -> dict:
         child = build_tree(subdir, rel_parts + (subdir.name,))
         total += child['words']
         children.append(child)
-    # markdown files in this directory
+    # content files in this directory
     try:
         files = sorted(
             f for f in node_path.iterdir()
-            if f.is_file() and f.suffix == '.md'
+            if f.is_file() and f.suffix in CONTENT_EXTS
         )
     except PermissionError:
         files = []
@@ -116,11 +131,11 @@ current = {
     'words':                     total_words,
     'lines':                     total_lines,
     'chars':                     total_chars,
-    'files':                     len(md_files),
+    'files':                     len(content_files),
     'folders':                   len(folders),
     'avg_words_per_content_note': avg_words_per_content_note,
 }
-print(f"   {total_words:,} words  ·  {len(md_files)} notes  ·  {len(folders)} folders  ·  avg {avg_words_per_content_note:,} words/note (Content)")
+print(f"   {total_words:,} words  ·  {len(content_files)} notes  ·  {len(folders)} folders  ·  avg {avg_words_per_content_note:,} words/note (Content)")
 
 # ── 2. File event history ─────────────────────────────────────────────────────
 print("\n② File event history …")
@@ -129,10 +144,13 @@ log = git('log',
           '--diff-filter=ADRM',
           '--name-status',
           '--format=COMMIT|%ai|%s',
-          '--', '*.md')
+          '--', '*.md', '*.canvas')
 
 def is_dot_path(path_str):
     return any(part.startswith('.') for part in Path(path_str).parts)
+
+def is_content_path(path_str):
+    return path_str.endswith(CONTENT_EXTS)
 
 file_events = []
 cur_date = cur_msg = ''
@@ -146,7 +164,7 @@ for line in log.stdout.splitlines():
     elif line[0] in 'ADM' and '\t' in line:
         status, path = line.split('\t', 1)
         path = path.strip()
-        if path.endswith('.md') and not is_dot_path(path):
+        if is_content_path(path) and not is_dot_path(path):
             file_events.append({
                 'date':    cur_date,
                 'type':    status.strip(),     # A=added, D=deleted, M=modified
@@ -155,7 +173,7 @@ for line in log.stdout.splitlines():
             })
     elif line[0] == 'R' and '\t' in line:
         parts = line.split('\t')
-        if len(parts) >= 3 and parts[2].strip().endswith('.md') and not is_dot_path(parts[2].strip()):
+        if len(parts) >= 3 and is_content_path(parts[2].strip()) and not is_dot_path(parts[2].strip()):
             file_events.append({
                 'date':     cur_date,
                 'type':     'R',               # renamed/moved
@@ -204,7 +222,7 @@ for idx, (d, h) in enumerate(days_sorted):
     print(f"   [{idx+1:>3}/{len(days_sorted)}] {d}", end='\r', flush=True)
     try:
         ls   = git('ls-tree', '-r', '--name-only', h)
-        mds  = [f for f in ls.stdout.strip().splitlines() if f.endswith('.md')]
+        mds  = [f for f in ls.stdout.strip().splitlines() if is_content_path(f)]
         if not mds:
             word_history.append({'date': d, 'words': 0})
             continue
@@ -215,7 +233,8 @@ for idx, (d, h) in enumerate(days_sorted):
             for member in tf.getmembers():
                 fobj = tf.extractfile(member)
                 if fobj:
-                    total += words_in(fobj.read().decode('utf-8', errors='ignore'))
+                    raw = fobj.read().decode('utf-8', errors='ignore')
+                    total += words_in(text_for(Path(member.name).suffix, raw))
         word_history.append({'date': d, 'words': total})
     except Exception:
         pass
