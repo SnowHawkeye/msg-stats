@@ -128,7 +128,7 @@
   /* ── streak widget ── */
   .streak-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: .75rem;
     margin-bottom: 1.25rem;
   }
@@ -506,8 +506,6 @@ function render(d) {
 
   // streak
   const streakItems = [
-    { num: p.current_streak || 0,          label: 'day streak'    },
-    { num: p.best_streak || 0,             label: 'best streak'   },
     { num: p.total_writing_days || 0,      label: 'days writing'  },
     { num: p.total_commits || 0,           label: 'total commits' },
   ];
